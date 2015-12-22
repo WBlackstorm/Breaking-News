@@ -86,4 +86,15 @@ public class News implements Serializable {
     public void setContent(String content) {
         this.content = content;
     }
+
+    @Override
+    public boolean equals(Object o) {
+
+        if (this.getId() == ((News)o).getId()) {
+            return true;
+        }
+
+        return false;
+
+    }
 }

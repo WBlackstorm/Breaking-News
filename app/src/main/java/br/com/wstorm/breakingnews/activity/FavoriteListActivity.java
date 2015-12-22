@@ -14,8 +14,10 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -31,6 +33,7 @@ import java.util.List;
 
 import br.com.wstorm.breakingnews.R;
 import br.com.wstorm.breakingnews.model.News;
+import br.com.wstorm.breakingnews.util.FavoriteUtil;
 
 /**
  * An activity representing a list of News. This activity
@@ -48,10 +51,12 @@ public class FavoriteListActivity extends AppCompatActivity {
      */
     private boolean mTwoPane;
 
+    private RecyclerView recyclerView;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_favorite_news_list);
+        setContentView(R.layout.activity_news_list);
 
         Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
         toolbar.setTitle(getString(R.string.favorite_list));
@@ -60,9 +65,18 @@ public class FavoriteListActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
         getSupportActionBar().setDisplayShowHomeEnabled(true);
 
-        View recyclerView = findViewById(R.id.news_list);
-        assert recyclerView != null;
-        setupRecyclerView((RecyclerView) recyclerView);
+        recyclerView = (RecyclerView) findViewById(R.id.news_list);
+
+        try{
+
+            recyclerView.setAdapter(
+                    new SimpleItemRecyclerViewAdapter(FavoriteUtil.list(getApplicationContext())));
+
+        } catch (JsonSyntaxException e) {
+
+            Log.d("NewsListActivity", "Problema no parsing do json", e.getCause());
+
+        }
 
         if (findViewById(R.id.news_detail_container) != null) {
             // The detail container view will be present only in the
@@ -74,18 +88,9 @@ public class FavoriteListActivity extends AppCompatActivity {
     }
 
     @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-
-        getMenuInflater().inflate(R.menu.menu_home, menu);
-
-        return true;
-
-    }
-
-    @Override
     public boolean onOptionsItemSelected(MenuItem item) {
 
-        int id = item.getItemId();
+       int id = item.getItemId();
 
        if (id == android.R.id.home) {
 
@@ -96,39 +101,6 @@ public class FavoriteListActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
-    }
-
-    private void setupRecyclerView(@NonNull RecyclerView recyclerView) {
-
-        try{
-
-            GsonBuilder b = new GsonBuilder();
-            b.setDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSSS");
-            Gson gson = b.create();
-
-            String json = null;
-
-            InputStream is = getAssets().open("news.json");
-            int size = is.available();
-            byte[] buffer = new byte[size];
-            is.read(buffer);
-            is.close();
-            json = new String(buffer, "UTF-8");
-
-            Type listType = new TypeToken<ArrayList<News>>() {}.getType();
-            List<News> newsList = gson.fromJson(json, listType);
-
-            recyclerView.setAdapter(new SimpleItemRecyclerViewAdapter(newsList));
-
-
-        } catch (JsonSyntaxException e) {
-
-            Log.d("NewsListActivity", "Problema no parsing do json", e.getCause());
-
-        } catch (IOException ex) {
-            ex.printStackTrace();
-        }
-
     }
 
     public class SimpleItemRecyclerViewAdapter
@@ -143,7 +115,7 @@ public class FavoriteListActivity extends AppCompatActivity {
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
             View view = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.news_list_content, parent, false);
+                    .inflate(R.layout.favorite_news_list_content, parent, false);
             return new ViewHolder(view);
         }
 
@@ -167,7 +139,7 @@ public class FavoriteListActivity extends AppCompatActivity {
 
             holder.title.setText(news.getTitle());
 
-            holder.description.setText(news.getDescription());
+
 
             holder.itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
@@ -189,6 +161,23 @@ public class FavoriteListActivity extends AppCompatActivity {
                     }
                 }
             });
+
+            holder.deleteFavorite.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+
+                    if (FavoriteUtil.delete(getApplicationContext(), news)) {
+
+                        recyclerView.setAdapter(
+                                new SimpleItemRecyclerViewAdapter(FavoriteUtil.list(getApplicationContext())));
+
+                        Toast.makeText(getApplicationContext(), "Notícia removida", Toast.LENGTH_SHORT).show();
+
+                    }
+
+                }
+            });
+
         }
 
         @Override
@@ -199,13 +188,13 @@ public class FavoriteListActivity extends AppCompatActivity {
         public class ViewHolder extends RecyclerView.ViewHolder {
             public final ImageView image;
             public final TextView title;
-            public final TextView description;
+            public final ImageButton deleteFavorite;
 
             public ViewHolder(View view) {
                 super(view);
                 image = (ImageView)view.findViewById(R.id.image);
                 title = (TextView) view.findViewById(R.id.title);
-                description = (TextView) view.findViewById(R.id.description);
+                deleteFavorite = (ImageButton) view.findViewById(R.id.delete_favorite);
             }
 
         }
